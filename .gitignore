@@ -1,0 +1,29 @@
+.env
+__pycache__/
+.pytest_cache/
+*.log
+db.sqlite3
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+.ruff_cache
+.mypy_cache
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+
+# linux files
+deploy.sh
+support_bot.service

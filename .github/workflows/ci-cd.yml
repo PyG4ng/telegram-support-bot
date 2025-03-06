@@ -1,0 +1,73 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # check-out repo and set-up python
+      - name: Check for changes
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # install & configure poetry
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          virtualenvs-path: .venv
+          installer-parallel: true
+
+      # load cached venv if cache exists
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      # install dependencies if cache does not exist
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Activate virtual environment
+        run: echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+
+      - name: Lint and format check with ruff
+        run: |
+          ruff check --output-format=github
+          ruff format --check
+
+      - name: Check imports with isort
+        run: isort --check-only --profile black .
+
+      - name: Type check with mypy
+        run: mypy .
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              bash /home/support/deploy.sh main
+            elif [ "${{ github.ref }}" == "refs/heads/dev" ]; then
+              bash /home/support/deploy.sh dev
+            fi
